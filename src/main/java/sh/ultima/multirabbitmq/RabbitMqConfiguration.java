@@ -18,8 +18,11 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.RabbitListenerContainerFactory;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @Configuration
+@EnableConfigurationProperties(ProgrammaticQueuesProperties.class)
 public class RabbitMqConfiguration {
 
     public static String EXCHANGE = "Events";
@@ -47,7 +50,7 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
-    Channel channel(final ConnectionFactory connectionFactory, final TopicExchange exchange, final TopicExchange errorExchange, List<Queue> queues) throws IOException {
+    Channel channel(final ConnectionFactory connectionFactory, final TopicExchange exchange, final TopicExchange errorExchange, List<Queue> queues, ProgrammaticQueuesProperties props) throws IOException {
         var connection = connectionFactory.createConnection();
         var channel = connection.createChannel(true);
         channel.exchangeDeclare(exchange.getName(), ExchangeTypes.TOPIC, true);
@@ -55,7 +58,13 @@ public class RabbitMqConfiguration {
         for (Queue queue : queues) {
             try {
                 channel.queueDeclare(queue.getName(), queue.isDurable(), queue.isExclusive(), queue.isAutoDelete(), queue.getArguments());
-                
+                props.queues.getOrDefault(queue.getName(), List.of()).iterator().forEachRemaining(eventCode -> {
+                    try {
+                        channel.queueBind(queue.getName()  , exchange.getName(), eventCode);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             } catch(Exception e) {
                 throw new RuntimeException(e);
             }
