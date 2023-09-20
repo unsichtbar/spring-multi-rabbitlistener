@@ -10,14 +10,20 @@ import java.io.IOException;
 import java.util.List;
 
 import org.aopalliance.aop.Advice;
+import org.slf4j.Logger;
 import org.springframework.amqp.core.ExchangeTypes;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.listener.ConditionalRejectingErrorHandler;
+import org.springframework.amqp.rabbit.listener.FatalExceptionStrategy;
 import org.springframework.amqp.rabbit.listener.RabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.listener.api.RabbitListenerErrorHandler;
+import org.springframework.amqp.rabbit.support.ListenerExecutionFailedException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
@@ -38,6 +44,7 @@ public class RabbitMqConfiguration {
     TopicExchange errorExchange() {
         return new TopicExchange(ERROR_EXCHANGE);
     }
+    
 
     @Bean
     RabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory, RabbitTemplate template) {
@@ -45,8 +52,21 @@ public class RabbitMqConfiguration {
         factory.setConcurrentConsumers(10);
         factory.setConnectionFactory(connectionFactory);
         factory.setDefaultRequeueRejected(false);
+
         factory.setAdviceChain(new Advice[]{ RetryInterceptorBuilder.stateless().maxAttempts(3).backOffOptions(500L, 2D, 5000L).build()});
         return factory;
+    }
+
+    @Bean
+    RabbitListenerErrorHandler rabbitListenerErrorHandler(Logger logger) {
+        return new RabbitListenerErrorHandler() {
+            @Override
+            public Object handleError(Message arg0, org.springframework.messaging.Message<?> arg1,
+                    ListenerExecutionFailedException arg2) throws Exception {
+                logger.info("handling the error");
+                return null;
+            }
+        };
     }
 
     @Bean
@@ -65,13 +85,14 @@ public class RabbitMqConfiguration {
                         throw new RuntimeException(e);
                     }
                 });
-                if(!queue.getName().endsWith("Error")) {
-                    // channel.bind
+                if(queue.getName().endsWith("Error")) {
+                    channel.queueBind(queue.getName()  , ERROR_EXCHANGE, queue.getName());
                 }
             } catch(Exception e) {
                 throw new RuntimeException(e);
             }
         }
+        
         return channel;
     }
 }

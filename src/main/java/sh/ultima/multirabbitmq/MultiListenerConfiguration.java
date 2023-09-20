@@ -56,9 +56,7 @@ public class MultiListenerConfiguration {
 
             ((GenericApplicationContext) ctx).registerBean(queue + "ErrorQueue", Queue.class, () -> errorQ);
 
-            // events.forEach(event -> {
-            //     BindingBuilder.bind(q).to(topicExchange).with(event);
-            // });
+      
         });
 
     }
