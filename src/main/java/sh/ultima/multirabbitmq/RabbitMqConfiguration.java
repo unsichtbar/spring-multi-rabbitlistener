@@ -65,6 +65,9 @@ public class RabbitMqConfiguration {
                         throw new RuntimeException(e);
                     }
                 });
+                if(!queue.getName().endsWith("Error")) {
+                    // channel.bind
+                }
             } catch(Exception e) {
                 throw new RuntimeException(e);
             }

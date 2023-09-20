@@ -45,12 +45,13 @@ public class MultiListenerConfiguration {
         // logger.info(om.writeValueAsString(properties));
         properties.queues.forEach((queue, events) -> {
             logger.info("add queue " + queue);
-            Queue q = new Queue(queue, true, false, false);
-            Queue errorQ = new Queue(queue + "Error", true, false, false);
-            Map<String, Object> qProps = new HashMap<>();
+                     Map<String, Object> qProps = new HashMap<>();
             qProps.put("x-dead-letter-exchange", ERROR_EXCHANGE);
             
             qProps.put("x-dead-letter-routing-key", queue + "Error");
+            Queue q = new Queue(queue, true, false, false, qProps);
+            Queue errorQ = new Queue(queue + "Error", true, false, false);
+   
             ((GenericApplicationContext) ctx).registerBean(queue + "Queue", Queue.class, () -> q);
 
             ((GenericApplicationContext) ctx).registerBean(queue + "ErrorQueue", Queue.class, () -> errorQ);
