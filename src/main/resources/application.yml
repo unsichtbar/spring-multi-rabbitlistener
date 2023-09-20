@@ -1,0 +1,3 @@
+smart.queues:
+    queue1:
+        listens-to: OPN_LOT_CHANGE
