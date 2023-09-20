@@ -15,6 +15,6 @@ public class FooListener {
     @RabbitListener(queues = "queue1")
     public void listen(Message message) {
         logger.info("FooListener received message.");
-
+        throw new RuntimeException("business logic failure");
     }
 }

@@ -1,5 +1,8 @@
 package sh.ultima.multirabbitmq;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.annotation.PostConstruct;
 
 import org.slf4j.Logger;
@@ -14,6 +17,9 @@ import org.springframework.context.support.GenericApplicationContext;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static sh.ultima.multirabbitmq.RabbitMqConfiguration.ERROR_EXCHANGE;
+
+import static sh.ultima.multirabbitmq.RabbitMqConfiguration.EXCHANGE;
 
 @Configuration
 @EnableConfigurationProperties(ProgrammaticQueuesProperties.class)
@@ -38,15 +44,20 @@ public class MultiListenerConfiguration {
     public void init() throws JsonProcessingException {
         // logger.info(om.writeValueAsString(properties));
         properties.queues.forEach((queue, events) -> {
+            logger.info("add queue " + queue);
             Queue q = new Queue(queue, true, false, false);
             Queue errorQ = new Queue(queue + "Error", true, false, false);
+            Map<String, Object> qProps = new HashMap<>();
+            qProps.put("x-dead-letter-exchange", ERROR_EXCHANGE);
+            
+            qProps.put("x-dead-letter-routing-key", queue + "Error");
             ((GenericApplicationContext) ctx).registerBean(queue + "Queue", Queue.class, () -> q);
 
             ((GenericApplicationContext) ctx).registerBean(queue + "ErrorQueue", Queue.class, () -> errorQ);
 
-            events.forEach(event -> {
-                BindingBuilder.bind(q).to(topicExchange).with(event);
-            });
+            // events.forEach(event -> {
+            //     BindingBuilder.bind(q).to(topicExchange).with(event);
+            // });
         });
 
     }
